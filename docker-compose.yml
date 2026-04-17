@@ -1,0 +1,98 @@
+version: '3.9'
+
+# ── DeployBoard — Docker Compose for GCP / VPS ───────────────────────────────
+#
+# Usage:
+#   cp .env.example .env        # fill in your values
+#   docker-compose up -d         # start everything
+#   docker-compose logs -f app   # watch logs
+#   docker-compose down          # stop everything
+
+services:
+
+  # ── DeployBoard Orchestrator ─────────────────────────────────────────────────
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: deployboard
+    restart: unless-stopped
+    ports:
+      - "3001:3001"
+    environment:
+      - NODE_ENV=production
+      - PORT=3001
+      - RUNNER=${RUNNER:-docker}
+      - MONGODB_URI=mongodb://mongo:27017/deployboard
+      - SITES_DIR=/var/www/user-sites
+      - TMP_DIR=/tmp/deployboard-builds
+      - GITHUB_TOKEN=${GITHUB_TOKEN}
+      - BASE_DOMAIN=${BASE_DOMAIN:-joytreehostingserver.dpdns.org}
+      - CF_WILDCARD_MODE=${CF_WILDCARD_MODE:-true}
+      - CF_API_TOKEN=${CF_API_TOKEN:-}
+      - CF_ZONE_ID=${CF_ZONE_ID:-}
+      - CF_TUNNEL_ID=${CF_TUNNEL_ID:-}
+      - CF_ACCOUNT_ID=${CF_ACCOUNT_ID:-}
+    volumes:
+      # Built sites — shared with Nginx so it can serve them
+      - sites-data:/var/www/user-sites
+      # Temp build dir — cleaned after each build
+      - /tmp/deployboard-builds:/tmp/deployboard-builds
+      # Docker socket — allows DeployBoard to spawn build containers
+      - /var/run/docker.sock:/var/run/docker.sock
+    depends_on:
+      mongo:
+        condition: service_healthy
+    networks:
+      - deployboard-net
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:3001/api/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
+  # ── MongoDB ───────────────────────────────────────────────────────────────────
+  mongo:
+    image: mongo:7-jammy
+    container_name: deployboard-mongo
+    restart: unless-stopped
+    volumes:
+      - mongo-data:/data/db
+    networks:
+      - deployboard-net
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  # ── Nginx — wildcard subdomain routing ────────────────────────────────────────
+  # Handles *.joytreehostingserver.dpdns.org → serves from /var/www/user-sites
+  nginx:
+    image: nginx:alpine
+    container_name: deployboard-nginx
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - sites-data:/var/www/user-sites:ro
+      - ./nginx/deployboard.conf:/etc/nginx/conf.d/deployboard.conf:ro
+      # Uncomment after running certbot for SSL:
+      # - /etc/letsencrypt:/etc/letsencrypt:ro
+    depends_on:
+      - app
+    networks:
+      - deployboard-net
+
+volumes:
+  sites-data:
+    driver: local
+  mongo-data:
+    driver: local
+
+networks:
+  deployboard-net:
+    driver: bridge
