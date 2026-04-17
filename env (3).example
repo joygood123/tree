@@ -1,0 +1,49 @@
+# ── DeployBoard — Environment Variables ─────────────────────────────────────
+# Copy this to .env before running the server.
+# On Render: add these in the Environment tab.
+# On GCP/VPS: create this file in the project root.
+
+# ── Server ────────────────────────────────────────────────────────────────────
+PORT=3001
+NODE_ENV=production
+
+# Build runner: 'local' for Render/testing, 'docker' for VPS with Docker
+RUNNER=docker
+
+# ── Directories ───────────────────────────────────────────────────────────────
+# On GCP/VPS these are persistent:
+SITES_DIR=/var/www/user-sites
+TMP_DIR=/tmp/deployboard-builds
+
+# ── MongoDB ───────────────────────────────────────────────────────────────────
+# Local (docker-compose): mongodb://mongo:27017/deployboard
+# Atlas (cloud):          mongodb+srv://user:pass@cluster.mongodb.net/deployboard
+MONGODB_URI=mongodb://mongo:27017/deployboard
+
+# ── GitHub ────────────────────────────────────────────────────────────────────
+# github.com → Settings → Developer settings → Personal access tokens → Classic
+# Scopes: repo (full repo access)
+GITHUB_TOKEN=ghp_your_token_here
+
+# ── Domain ────────────────────────────────────────────────────────────────────
+# Your Cloudflare domain. All deployed sites go at subdomain.BASE_DOMAIN
+BASE_DOMAIN=joytreehostingserver.dpdns.org
+
+# ── Cloudflare DNS Mode ───────────────────────────────────────────────────────
+# CF_WILDCARD_MODE=true  → You have a wildcard A record (* → VPS IP) in Cloudflare.
+#                          DeployBoard will NOT try to create individual DNS records.
+#                          Subdomains just work automatically. THIS IS YOUR SETUP.
+#
+# CF_WILDCARD_MODE=false → No wildcard. DeployBoard creates a DNS record per deploy.
+#                          Requires CF_API_TOKEN + CF_ZONE_ID below.
+CF_WILDCARD_MODE=true
+
+# ── Cloudflare API (only needed if CF_WILDCARD_MODE=false) ───────────────────
+CF_API_TOKEN=
+CF_ZONE_ID=
+CF_TUNNEL_ID=
+CF_ACCOUNT_ID=
+
+# ── VPS IP (Google Cloud Shell / GCP VM) ─────────────────────────────────────
+# Your GCP external IP — used as reference for Nginx / Cloudflare A record
+VPS_IP=35.205.83.73
