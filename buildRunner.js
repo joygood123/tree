@@ -1,4 +1,6 @@
-/**
+// Added HTML entry file generation
+const fs = require('fs');
+fs.writeFileSync('index.html', '<html><body>Hello World!</body></html>');/**
  * buildRunner.js — Smart Build Abstraction
  *
  * LOCAL mode  → child_process (works on Render, Play with Docker, local dev)
